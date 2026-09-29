@@ -2,19 +2,26 @@
 
 Signed, offline-verifiable authorization for API-contract changes. Only a granted change can proceed. Three tools: preflight_change_set, verify_receipt, get_decision_details.
 
-<a href="https://studio.firebase.google.com/new?template=https://github.com/coderifts/firebase-studio-template">
-  <img height="32" alt="Open in Firebase Studio" src="https://cdn.firebasestudio.dev/btn/open_dark_32.svg">
-</a>
+## Use this template
 
-Firebase Studio's documentation, updated 2026-09-24, says new workspace creation and user signup have been disabled since 2026-06-22. The button is the documented custom-template URL.
+This repository is a GitHub template. Use this template creates a new repository from these files. There is no Firebase Studio button on this page. Firebase Studio's documentation, updated 2026-09-24, says new workspace creation and user signup have been disabled since 2026-06-22.
 
 ## Three steps
 
-1. Open this repository with the button above.
-2. The workspace installs Node.js 20 and `coderifts@8.6.8`. Preflight a contract change with `coderifts diff <old-spec> <new-spec> --cloud --gate`. That command quotes the server authorize verdict and needs an API key (`coderifts login`). `coderifts diff` without `--gate` is local analysis, not a grant.
-3. The required-check recipe is separate from the workspace. This repo's workflow job is named `CodeRifts / contract-gate`. The App check is `CodeRifts / issuer`. `npx coderifts setup-required-check` prints the `gh` command and does not change branch protection unless `--apply` is passed. The procedure is in [ENFORCEMENT.md](https://github.com/coderifts/contract-gate/blob/main/ENFORCEMENT.md).
+1. On https://github.com/coderifts/template, choose Use this template and create the new repository.
+2. The copy already contains `openapi.yaml`, `.coderifts.yml`, and `.github/workflows/coderifts.yml`. Add the repository secret `CODERIFTS_API_KEY`. The workflow runs on pull requests. It does not change branch protection.
+3. Require both checks named below. Until both are required, a red check is a report. It does not stop the merge.
 
-the workspace shows the decision; enforcement is the GitHub required check
+## Required checks
+
+Two contexts, both required on the protected branch:
+
+- `CodeRifts / contract-gate` is the name of the `always()` job in `.github/workflows/coderifts.yml`. That job name is the context. The action step above it is not the context.
+- `CodeRifts / issuer` is the check posted by the CodeRifts GitHub App. It is a different check from the workflow job.
+
+`npx coderifts setup-required-check` prints the `gh` command. It does not change branch protection unless `--apply` is passed. This page does not pass `--apply`. The procedure is in [ENFORCEMENT.md](https://github.com/coderifts/contract-gate/blob/main/ENFORCEMENT.md).
+
+The workflow file says the same limit in its header: it does not enable branch protection, and it does not make the check required.
 
 ## Files
 
