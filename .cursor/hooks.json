@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "coderifts cursor-hook",
+        "matcher": "Write|Delete",
+        "timeout": 60,
+        "failClosed": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+# CodeRifts Policy: Startup Lean
+# For fast-moving teams that want safety without friction.
+# Catches critical breaking changes but stays out of your way.
+#
+# Decision Spec 2.0 (comment only — this file does not set agent protocol):
+#   branch on execution_action (CONTINUE | CONTINUE_WITH_MONITORING | REQUEST_APPROVAL | STOP).
+#   Unknown execution_action → STOP. Analyze is not permission; authorize is required to act.
+
+failOnBreaking: true
+
+policy:
+  max_breaking_changes: 5
+  no_delete_endpoints: false
+  no_delete_required_fields: true
+  require_deprecation_before_removal: false
+  require_version_bump_on_breaking: false
+
+ignore:
+  rules:
+    - request-property-became-not-nullable
+    - response-optional-property-removed
+
+linting:
+  enabled: true
+  rules:
+    naming_convention: false
+    consistent_errors: true
+    pagination_pattern: false

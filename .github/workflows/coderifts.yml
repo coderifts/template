@@ -1,0 +1,98 @@
+# Written by `coderifts init --agents`. Re-run is a no-op when this file already exists.
+#
+# The required context is this workflow's always() job, named exactly:
+#   CodeRifts / contract-gate
+# and the CodeRifts App's check:
+#   CodeRifts / issuer
+# It does NOT enable branch protection and it does NOT make that check required.
+# Turn the check on in repo settings to enforce (https://github.com/coderifts/contract-gate/blob/main/ENFORCEMENT.md).
+#
+# Copied from the gate repo example (examples/contract-gate.yml) — action at @v0.
+# @v0 is a MOVING tag on purpose: this default template trades immutability for easy updates,
+# so you get gate fixes without editing this file. It is NOT a security pin. If you need one,
+# use `coderifts init --agents --strict`, which pins a full commit SHA. Do not "fix" this to a
+# SHA and do not "fix" strict back to a tag — the difference is deliberate.
+name: CodeRifts Contract Gate
+
+# Run on EVERY pull request. Do NOT add paths: filters — a required check that
+# never runs leaves the PR mergeable (see ENFORCEMENT.md, "fail-closed on absence").
+on:
+  pull_request:
+  # X.21: a merge QUEUE builds and merges a commit that is not the PR head — the PR's own
+  # green checks were computed against different bytes. Without this trigger the gate never
+  # sees what actually lands. Same fail-closed reasoning as the no-paths: rule above, arriving
+  # by a different door: the check is not failing, it simply was never asked.
+  merge_group:
+
+permissions:
+  checks: write
+  contents: read
+
+jobs:
+  contract-gate:
+    runs-on: ubuntu-latest
+    steps:
+      # actions/checkout stays on the MOVING TAG @v4 here, deliberately — the same trade this
+      # template makes for the gate itself. You get upstream fixes without editing this file, and
+      # you accept that the bytes can change under you. `coderifts init --agents --strict` pins a
+      # full commit SHA for both. Do not "fix" this to a SHA and do not "fix" strict back to a tag.
+      - uses: actions/checkout@v4
+        with:
+          # REQUIRED: the gate derives the change set from git diff base...head.
+          fetch-depth: 0
+
+      - uses: coderifts/contract-gate@v0
+        with:
+          api-key: ${{ secrets.CODERIFTS_API_KEY }}
+          # The always() job below carries the required name; the action must not post it too.
+          post-check-run: 'false'
+          # api-url: https://app.coderifts.com   # override only for self-hosted
+          #
+          # Optional — require a signed CWM delivery attestation (guard ≥9.2.0).
+          # Honest default: false (commented). Uncomment the three lines to enforce.
+          # require-verified-monitoring: 'true'
+          # monitoring-attestation: ${{ vars.CODERIFTS_MONITORING_ATTESTATION }}
+          # monitoring-keyring: ${{ github.workspace }}/.coderifts/monitoring-keys.json
+          #
+          # Optional — require an execution grant (contract-gate ≥0.5.0). When armed, the
+          # production grant is cr.exec.v2; cr.exec.v1 is legacy. The gate accepts BOTH so a
+          # migration is not a hard cut. OFF HERE, ON IN STRICT, and the difference is deliberate
+          # — same rule as the @v0 tag above. Turning it on BLOCKS every PR that changes a
+          # governed contract path and carries no valid grant (`grant_not_supplied`), so it
+          # needs a working way to mint and deliver one per change set before it helps. This
+          # template is the easy-onboarding one and stays non-blocking;
+          # `coderifts init --agents --strict` is where the gate is armed.
+          # Do not "fix" this on and do not "fix" strict off.
+          # require-grant: 'true'
+          # execution-grant: ${{ vars.CODERIFTS_EXECUTION_GRANT }}
+          # grant-operation: 'merge'
+
+  # X.21 — THE JOB TO MARK REQUIRED. Not contract-gate above; this one.
+  #
+  # A required check that never REPORTS leaves the PR mergeable. That is the same hole the
+  # "no paths: filters" rule guards, reached by other doors: a cancelled run, a skipped job, a
+  # dependency that died before it could post. GitHub reads an absent check as "not failing" —
+  # never as "not passing". Silence is the failure mode, so silence is what this job removes.
+  #
+  # `if: always()` is what makes it run when contract-gate did NOT, and the explicit string
+  # comparison is what makes it FAIL there. Do not "simplify" this to `needs:` alone: a job whose
+  # dependency is skipped is itself skipped, which is precisely the silence being closed. And do
+  # not treat the comparison as noise — `success()` would be true for a skipped dependency.
+  contract-gate-required:
+    name: "CodeRifts / contract-gate"
+    needs: [contract-gate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: A gate that did not pass is not a pass
+        env:
+          # Through env, not interpolated into the script line: a job result is a fixed enum
+          # today, but pasting a context straight into a shell command is a habit that outlives
+          # the value that made it safe.
+          GATE_RESULT: ${{ needs.contract-gate.result }}
+        run: |
+          echo "contract-gate result: $GATE_RESULT"
+          if [ "$GATE_RESULT" != "success" ]; then
+            echo "::error::contract-gate did not succeed (result: $GATE_RESULT). A gate that did not run is not a gate that passed."
+            exit 1
+          fi
