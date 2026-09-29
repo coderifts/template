@@ -1,6 +1,0 @@
-{
-  "name": "CodeRifts-governed API project",
-  "description": "An API project with a two-path OpenAPI file, the Startup Lean CodeRifts policy, and the contract-gate workflow. The workspace can show a decision. Enforcement is the GitHub required check.",
-  "icon": "https://www.gstatic.com/images/branding/productlogos/studio/v1/192px.svg",
-  "params": []
-}
